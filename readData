@@ -1,0 +1,109 @@
+
+import numpy as np
+import math
+import pandas as pd
+import os
+
+datafile = '/Users/kmcpherson/Documents/UROP/dj02_3_a_good_1200x1200.txt'
+file0 = '/Users/kmcpherson/Documents/UROP/file0.txt'
+file1 = '/Users/kmcpherson/Documents/UROP/file1.txt'
+file0_sim = file0.replace('.txt', '_sim.txt')
+file1_sim = file1.replace('.txt', '_sim.txt')
+file0_sim_dir = file0_sim.replace('.txt', '_dir.txt')
+file1_sim_dir = file1_sim.replace('.txt', '_dir.txt')
+columns4 = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns
+columns3 = ['Visitor Index', 'Action', 'Time (sec)']
+
+
+def separate_file(filename): #separates one .txt file into two .txt files
+    file = open(filename, 'r') #whole .txt file with 0's and 1's
+    file_0 = open(file0, 'w') #file with person 0's positions
+    file_1 = open(file1, 'w') #file with person 1's positions
+
+    for line in file:
+        if line.startswith('0'):
+            file_0.write(line) #put the lines starting with 0 into the 0 file
+        else:
+            file_1.write(line) #put the lines starting with 1 into the 1 file
+
+
+def txt_to_csv(filename): #converts a .txt to .csv
+    f = open(filename, 'r')
+    numCols = len(f.readline().split())
+    if numCols == 3:
+        columns = columns3
+    else:
+        columns = columns4
+
+    read_file = pd.read_csv(filename, delimiter='	', header=None, names=columns) #take in the .txt file
+    read_file.to_csv(filename.replace('txt', 'csv'), index=None) #convert to .csv
+
+
+def separate_and_convert(filename, file0, file1): #takes in the big .txt file, converts it into two .csv files
+    separate_file(filename)
+    txt_to_csv(file0)
+    txt_to_csv(file1)
+
+
+def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points (every second)
+    f = open(filename)
+    lines = f.readlines()
+    desired_lines = lines[22::24] #only look at data every second
+    file = open(filename.replace('.txt', '_sim.txt'), 'w') #create simplified file
+    firstLine = lines[0]
+    file.write(firstLine[:len(firstLine)-4:] + '0\n') #print the 0th second
+    for line in desired_lines: #print every 24th line (every second)
+        file.write(line[:len(line)-4:] + '0\n')
+
+
+def get_directions(filename): #gets list (.csv) of directions from .txt file
+    file = open(filename, 'r') #.txt file
+    dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
+
+    lines = file.readlines()
+    for x in range(len(lines)-1): #for every line (except last)
+        thisLine = lines[x].split()
+        newLine = thisLine[0]
+        nextLine = lines[x+1].split() #looks at next coords to get vector direction
+        Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
+        Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
+        if Xdiff != 0:
+            slope = Ydiff / Xdiff
+        else:
+            slope = 100
+
+        if (abs(slope) > math.tan(math.radians(67.5))): # 67.5-112.5 or 247.5-292.5 degrees
+            if (Ydiff > 0):
+                newLine += '	U	'
+            else:
+                newLine += '	D	'
+        elif (abs(slope) < math.tan(math.radians(22.5))): #157.5-202.5 or 337.5-22.5 degrees
+            if (Xdiff < 0):
+                newLine += '	L	'
+            else:
+                newLine += '	R	'
+        elif (math.tan(math.radians(22.5)) <= abs(slope) <= math.tan(math.radians(67.5))): #112.5-157.5 or 22.5-67.5 degrees
+            if (Ydiff > 0):
+                if(Xdiff < 0):
+                    newLine += '	UL	'
+                else:
+                    newLine += '	UR	'
+            else: #202.5-247.5 or 292.5-337.5 degrees
+                if(Xdiff < 0):
+                    newLine += '	DL	'
+                else:
+                    newLine += '	DR	'
+
+        newLine += (thisLine[3] + '\n')
+        dir_file.write(newLine)
+
+
+separate_and_convert(datafile, file0, file1)
+simplify(file0)
+simplify(file1)
+txt_to_csv(file0.replace('.txt', '_sim.txt'))
+txt_to_csv(file1.replace('.txt', '_sim.txt'))
+get_directions(file0_sim)
+get_directions(file1_sim)
+txt_to_csv(file0_sim_dir)
+txt_to_csv(file1_sim_dir)
