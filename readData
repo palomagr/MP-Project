@@ -70,7 +70,7 @@ def get_directions(filename, numDirections): #gets list (.csv) of directions fro
         Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
         Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
 
-        distance = math.sqrt(Ydiff**2 + Xdiff**2) # ** distance to use in the future for the unity simulation
+        distance = math.sqrt(Ydiff**2 + Xdiff**2) /29 # ** distance to use in the future for the unity simulation (meters)
         degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
         if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
             degrees += 360
