@@ -11,9 +11,8 @@ file0_sim = file0.replace('.txt', '_sim.txt')
 file1_sim = file1.replace('.txt', '_sim.txt')
 file0_sim_dir = file0_sim.replace('.txt', '_dir.txt')
 file1_sim_dir = file1_sim.replace('.txt', '_dir.txt')
-columns4 = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns
-columns3 = ['Visitor Index', 'Action', 'Time (sec)']
-
+col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns for the coordinate file
+col_dir = ['Visitor Index', 'Action', 'Degrees', 'Time (sec)'] #names of the columns for the directions file
 
 def separate_file(filename): #separates one .txt file into two .txt files
     file = open(filename, 'r') #whole .txt file with 0's and 1's
@@ -26,24 +25,21 @@ def separate_file(filename): #separates one .txt file into two .txt files
         else:
             file_1.write(line) #put the lines starting with 1 into the 1 file
 
-
-def txt_to_csv(filename): #converts a .txt to .csv
+def txt_to_csv(filename, cols): #converts a .txt to .csv
     f = open(filename, 'r')
     numCols = len(f.readline().split())
-    if numCols == 3:
-        columns = columns3
+    if 'dir' in cols:
+        columns = col_dir
     else:
-        columns = columns4
+        columns = col_coord
 
     read_file = pd.read_csv(filename, delimiter='	', header=None, names=columns) #take in the .txt file
     read_file.to_csv(filename.replace('txt', 'csv'), index=None) #convert to .csv
 
-
 def separate_and_convert(filename, file0, file1): #takes in the big .txt file, converts it into two .csv files
     separate_file(filename)
-    txt_to_csv(file0)
-    txt_to_csv(file1)
-
+    txt_to_csv(file0, 'coord')
+    txt_to_csv(file1, 'coord')
 
 def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points (every second)
     f = open(filename)
@@ -53,10 +49,44 @@ def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points
     firstLine = lines[0]
     file.write(firstLine[:len(firstLine)-4:] + '0\n') #print the 0th second
     for line in desired_lines: #print every 24th line (every second)
-        file.write(line[:len(line)-4:] + '0\n')
+        file.write(line[:len(line)-4:] + '0\n') #simplifies the seconds (0.0, 1.0, 2.0 ...)
 
+def get_directions(filename, numDirections): #gets list (.csv) of directions from .txt file
+    file = open(filename, 'r') #.txt file
+    dir_filename = filename.replace('.txt', '_dir.txt')
+    dir_file = open(dir_filename, 'w') #file with directions
 
-def get_directions(filename): #gets list (.csv) of directions from .txt file
+    interval = 360.0/numDirections #the range of each direction
+
+    directions_dict = {} #dictionary of directions: D1, D2, D3 ...
+    for x in range(numDirections):
+        directions_dict[(interval*x, interval*(x+1))] = ('D' + str(x+1)) #maps 'D1' to a range of degrees, 'D2' to the next range, etc.
+
+    lines = file.readlines()
+    for x in range(len(lines)-1): #for every line (except last)
+        thisLine = lines[x].split()
+        newLine = thisLine[0]
+        nextLine = lines[x+1].split() #looks at next coords to get vector direction
+        Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
+        Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
+
+        distance = math.sqrt(Ydiff**2 + Xdiff**2) # ** distance to use in the future for the unity simulation
+        degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
+        if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
+            degrees += 360
+
+        for key in directions_dict:
+            if degrees == 0: #if the person doesn't move
+                newLine += '	None	' #give it no direction
+                break
+            if key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
+                newLine += '	' + directions_dict[key] + '	' #assign it to that direction in the file
+                break
+
+        newLine += str(degrees) + '	' +(thisLine[3] + '\n') #degrees and time columns
+        dir_file.write(newLine) #writes the line in the .txt file
+
+def old_get_directions(filename): #old directions function - U, D, L, R
     file = open(filename, 'r') #.txt file
     dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
 
@@ -72,7 +102,7 @@ def get_directions(filename): #gets list (.csv) of directions from .txt file
         else:
             slope = 100
 
-        if (abs(slope) > math.tan(math.radians(67.5))): # 67.5-112.5 or 247.5-292.5 degrees
+        if (abs(slope) > math.tan(math.radians(67.5))): #67.5-112.5 or 247.5-292.5 degrees
             if (Ydiff > 0):
                 newLine += '	U	'
             else:
@@ -101,9 +131,9 @@ def get_directions(filename): #gets list (.csv) of directions from .txt file
 separate_and_convert(datafile, file0, file1)
 simplify(file0)
 simplify(file1)
-txt_to_csv(file0.replace('.txt', '_sim.txt'))
-txt_to_csv(file1.replace('.txt', '_sim.txt'))
-get_directions(file0_sim)
-get_directions(file1_sim)
-txt_to_csv(file0_sim_dir)
-txt_to_csv(file1_sim_dir)
+txt_to_csv(file0.replace('.txt', '_sim.txt'), 'coord')
+txt_to_csv(file1.replace('.txt', '_sim.txt'), 'coord')
+get_directions(file0_sim, 9)
+get_directions(file1_sim, 9)
+txt_to_csv(file0_sim_dir, 'dir')
+txt_to_csv(file1_sim_dir, 'dir')
