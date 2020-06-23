@@ -4,26 +4,24 @@ import math
 import pandas as pd
 import os
 
-datafile = '/Users/kmcpherson/Documents/UROP/dj02_3_a_good_1200x1200.txt'
-file0 = '/Users/kmcpherson/Documents/UROP/file0.txt'
-file1 = '/Users/kmcpherson/Documents/UROP/file1.txt'
-file0_sim = file0.replace('.txt', '_sim.txt')
-file1_sim = file1.replace('.txt', '_sim.txt')
-file0_sim_dir = file0_sim.replace('.txt', '_dir.txt')
-file1_sim_dir = file1_sim.replace('.txt', '_dir.txt')
+filepath = '/Users/kmcpherson/Documents/UROP/' #filepath to the main folder - can be changed depending on the user
+testfile = filepath + 'testfile.txt' #tester file with more indices than just 0 & 1
+datafile = filepath + 'dj02_3_a_good_1200x1200.txt'
 col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns for the coordinate file
 col_dir = ['Visitor Index', 'Action', 'Degrees', 'Time (sec)'] #names of the columns for the directions file
+file_list = []
 
-def separate_file(filename): #separates one .txt file into two .txt files
-    file = open(filename, 'r') #whole .txt file with 0's and 1's
-    file_0 = open(file0, 'w') #file with person 0's positions
-    file_1 = open(file1, 'w') #file with person 1's positions
-
-    for line in file:
-        if line.startswith('0'):
-            file_0.write(line) #put the lines starting with 0 into the 0 file
-        else:
-            file_1.write(line) #put the lines starting with 1 into the 1 file
+def separate_file(filename): #separates one .txt file into .txt files for each index
+    file = open(filename, 'r') #whole .txt file with indices
+    lines = file.readlines()
+    index_dict = {} #dictionary that maps index to filepath
+    for line in lines: #finds the indices, fills the dictionary
+        index = line.split()[0] + 'file' #0file, 1file, ...
+        if index not in index_dict: #if it's a new index
+            file_list.append(filepath + index + '.txt') #adds the file to the global list
+            index_dict[index] = filepath + index + '.txt' #make a key in the dict for it
+            globals()[index] = open(index_dict[index], 'w') #opens each of the files and assigns them to a variable (0file = __, 1file = __)
+        globals()[index].write(line)
 
 def txt_to_csv(filename, cols): #converts a .txt to .csv
     f = open(filename, 'r')
@@ -36,15 +34,16 @@ def txt_to_csv(filename, cols): #converts a .txt to .csv
     read_file = pd.read_csv(filename, delimiter='	', header=None, names=columns) #take in the .txt file
     read_file.to_csv(filename.replace('txt', 'csv'), index=None) #convert to .csv
 
-def separate_and_convert(filename, file0, file1): #takes in the big .txt file, converts it into two .csv files
+def separate_and_convert(filename): #takes in the big .txt file, converts it into .csv files for each index
     separate_file(filename)
-    txt_to_csv(file0, 'coord')
-    txt_to_csv(file1, 'coord')
+    for file in file_list:
+        txt_to_csv(file, 'coord')
 
+#simplify should be done after separating the big file
 def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points (every second)
     f = open(filename)
     lines = f.readlines()
-    desired_lines = lines[22::24] #only look at data every second
+    desired_lines = lines[22::24] #only look at data every second (every 24th line)
     file = open(filename.replace('.txt', '_sim.txt'), 'w') #create simplified file
     firstLine = lines[0]
     file.write(firstLine[:len(firstLine)-4:] + '0\n') #print the 0th second
@@ -53,8 +52,7 @@ def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points
 
 def get_directions(filename, numDirections): #gets list (.csv) of directions from .txt file
     file = open(filename, 'r') #.txt file
-    dir_filename = filename.replace('.txt', '_dir.txt')
-    dir_file = open(dir_filename, 'w') #file with directions
+    dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
 
     interval = 360.0/numDirections #the range of each direction
 
@@ -70,7 +68,7 @@ def get_directions(filename, numDirections): #gets list (.csv) of directions fro
         Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
         Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
 
-        distance = math.sqrt(Ydiff**2 + Xdiff**2) /29 # ** distance to use in the future for the unity simulation (meters)
+        distance = math.sqrt(Ydiff**2 + Xdiff**2)/29 # ** distance to use in the future for the unity simulation (meters)
         degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
         if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
             degrees += 360
@@ -90,6 +88,13 @@ def old_get_directions(filename): #old directions function - U, D, L, R
     file = open(filename, 'r') #.txt file
     dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
 
+    dir_dict = {} #dictionary of directions: D1, D2, D3 ...
+    UDLR_list = ['R', 'UR', 'U', 'UL', 'L', 'DL', 'D', 'DR']
+    UDLR_dict = {} #dictionary of U, D, L, R ...
+    for x in range(numDirections):
+        dir_dict[(interval*x - 22.5, interval*(x+1) - 22.5)] = ('D' + str(x+1))
+        UDLR_dict['D' + str(x+1)] = UDLR_list[x] #maps D1 to R, D2 to UR, etc
+
     lines = file.readlines()
     for x in range(len(lines)-1): #for every line (except last)
         thisLine = lines[x].split()
@@ -97,43 +102,26 @@ def old_get_directions(filename): #old directions function - U, D, L, R
         nextLine = lines[x+1].split() #looks at next coords to get vector direction
         Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
         Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
-        if Xdiff != 0:
-            slope = Ydiff / Xdiff
-        else:
-            slope = 100
 
-        if (abs(slope) > math.tan(math.radians(67.5))): #67.5-112.5 or 247.5-292.5 degrees
-            if (Ydiff > 0):
-                newLine += '	U	'
-            else:
-                newLine += '	D	'
-        elif (abs(slope) < math.tan(math.radians(22.5))): #157.5-202.5 or 337.5-22.5 degrees
-            if (Xdiff < 0):
-                newLine += '	L	'
-            else:
-                newLine += '	R	'
-        elif (math.tan(math.radians(22.5)) <= abs(slope) <= math.tan(math.radians(67.5))): #112.5-157.5 or 22.5-67.5 degrees
-            if (Ydiff > 0):
-                if(Xdiff < 0):
-                    newLine += '	UL	'
-                else:
-                    newLine += '	UR	'
-            else: #202.5-247.5 or 292.5-337.5 degrees
-                if(Xdiff < 0):
-                    newLine += '	DL	'
-                else:
-                    newLine += '	DR	'
+        distance = math.sqrt(Ydiff**2 + Xdiff**2)/29 # ** distance to use in the future for the unity simulation (meters)
+        degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
+        if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
+            degrees += 360
 
-        newLine += (thisLine[3] + '\n')
-        dir_file.write(newLine)
+        for key in dir_dict:
+            if degrees == 0: #if the person doesn't move
+                newLine += '	None	' #give it no direction
+                break
+            if key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
+                newLine += '	' + UDLR_dict[dir_dict[key]] + '	' #assign it to that direction in the file
+                break
+
+        newLine += str(degrees) + '	' +(thisLine[3] + '\n') #degrees and time columns
+        dir_file.write(newLine) #writes the line in the .txt file
 
 
-separate_and_convert(datafile, file0, file1)
-simplify(file0)
-simplify(file1)
-txt_to_csv(file0.replace('.txt', '_sim.txt'), 'coord')
-txt_to_csv(file1.replace('.txt', '_sim.txt'), 'coord')
-get_directions(file0_sim, 9)
-get_directions(file1_sim, 9)
-txt_to_csv(file0_sim_dir, 'dir')
-txt_to_csv(file1_sim_dir, 'dir')
+separate_file(datafile) #separate the main file into files of each index
+for file in file_list: #for the file of each index
+    simplify(file) #simplify it to every second
+    get_directions(file.replace('.txt', '_sim.txt'), 9) #get the directions of the simplified file
+    txt_to_csv(file.replace('.txt', '_sim_dir.txt'), 'dir') #put that into a csv
