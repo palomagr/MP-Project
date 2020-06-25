@@ -8,7 +8,7 @@ filepath = '/Users/kmcpherson/Documents/UROP/' #filepath to the main folder - ca
 testfile = filepath + 'testfile.txt' #tester file with more indices than just 0 & 1
 datafile = filepath + 'dj02_3_a_good_1200x1200.txt'
 col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns for the coordinate file
-col_dir = ['Visitor Index', 'Action', 'Degrees', 'Time (sec)'] #names of the columns for the directions file
+col_dir = ['Visitor Index', 'Action', 'Distance', 'Time (sec)'] #names of the columns for the directions file
 file_list = []
 
 def separate_file(filename): #separates one .txt file into .txt files for each index
@@ -31,7 +31,7 @@ def txt_to_csv(filename, cols): #converts a .txt to .csv
     else:
         columns = col_coord
 
-    read_file = pd.read_csv(filename, delimiter='	', header=None, names=columns) #take in the .txt file
+    read_file = pd.read_csv(filename, delimiter='\t', header=None, names=columns) #take in the .txt file
     read_file.to_csv(filename.replace('txt', 'csv'), index=None) #convert to .csv
 
 def separate_and_convert(filename): #takes in the big .txt file, converts it into .csv files for each index
@@ -41,25 +41,30 @@ def separate_and_convert(filename): #takes in the big .txt file, converts it int
 
 #simplify should be done after separating the big file
 def simplify(filename): #takes in a .txt, simplifies to a .txt with fewer points (every second)
-    f = open(filename)
+    f = open(filename, 'r')
     lines = f.readlines()
-    desired_lines = lines[22::24] #only look at data every second (every 24th line)
+    desired_lines = []
+    seconds_list = []
+    for line in lines:
+        split = line.split() #[index, x coord, y coord, time]
+        if (int(float(split[3]))) not in seconds_list: #simplifies it to every second
+            seconds_list.append(int(float(split[3])))
+            desired_lines.append(line)
     file = open(filename.replace('.txt', '_sim.txt'), 'w') #create simplified file
-    firstLine = lines[0]
-    file.write(firstLine[:len(firstLine)-4:] + '0\n') #print the 0th second
     for line in desired_lines: #print every 24th line (every second)
         file.write(line[:len(line)-4:] + '0\n') #simplifies the seconds (0.0, 1.0, 2.0 ...)
 
-def get_directions(filename, numDirections): #gets list (.csv) of directions from .txt file
+def get_directions(filename, numDirections): #gets list (.txt) of directions from .txt file
     file = open(filename, 'r') #.txt file
     dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
 
     interval = 360.0/numDirections #the range of each direction
 
-    directions_dict = {} #dictionary of directions: D1, D2, D3 ...
+    directions_dict = {} #dictionary of directions: [0-45:D1], [45-90:D2], [90-135:D3] ...
     for x in range(numDirections):
         directions_dict[(interval*x, interval*(x+1))] = ('D' + str(x+1)) #maps 'D1' to a range of degrees, 'D2' to the next range, etc.
 
+    dir_list = [] #list of directions to see if it matches the previous line (in that case, just go forward)
     lines = file.readlines()
     for x in range(len(lines)-1): #for every line (except last)
         thisLine = lines[x].split()
@@ -74,53 +79,61 @@ def get_directions(filename, numDirections): #gets list (.csv) of directions fro
             degrees += 360
 
         for key in directions_dict:
-            if degrees == 0: #if the person doesn't move
-                newLine += '	None	' #give it no direction
+            if degrees == 0 or distance <= 0.01: #if the person doesn't move
+                dir_list.append('None')
+                newLine += '\tNone\t' #give it no direction
                 break
-            if key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
-                newLine += '	' + directions_dict[key] + '	' #assign it to that direction in the file
+            elif key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
+                dir_list.append(directions_dict[key])
+                if dir_list[len(dir_list)-1] == dir_list[len(dir_list)-2]: #if this direction is the same as the previous line
+                    newLine += '\t' + 'F\t' #just go forward
+                else:
+                    newLine += '\t' + directions_dict[key] + ', F\t' #turn and go forward
                 break
 
-        newLine += str(degrees) + '	' +(thisLine[3] + '\n') #degrees and time columns
+        #newLine += (thisLine[3] + '\n') #just time column (no distance)
+        newLine += str(round(distance,3)) + '\t' +(thisLine[3] + '\n') #distance and time columns
         dir_file.write(newLine) #writes the line in the .txt file
 
-def old_get_directions(filename): #old directions function - U, D, L, R
-    file = open(filename, 'r') #.txt file
-    dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
+# def old_get_directions(filename): #old directions function - U, D, L, R
+#     file = open(filename, 'r') #.txt file
+#     dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') #file with directions
+#
+#     dir_dict = {} #dictionary of directions: D1, D2, D3 ...
+#     UDLR_list = ['R', 'UR', 'U', 'UL', 'L', 'DL', 'D', 'DR']
+#     UDLR_dict = {} #dictionary of U, D, L, R ...
+#     for x in range(numDirections):
+#         dir_dict[(interval*x - 22.5, interval*(x+1) - 22.5)] = ('D' + str(x+1))
+#         UDLR_dict['D' + str(x+1)] = UDLR_list[x] #maps D1 to R, D2 to UR, etc
+#
+#     lines = file.readlines()
+#     for x in range(len(lines)-1): #for every line (except last)
+#         thisLine = lines[x].split()
+#         newLine = thisLine[0]
+#         nextLine = lines[x+1].split() #looks at next coords to get vector direction
+#         Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
+#         Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
+#
+#         distance = math.sqrt(Ydiff**2 + Xdiff**2)/29 # ** distance to use in the future for the unity simulation (meters)
+#         degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
+#         if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
+#             degrees += 360
+#
+#         for key in dir_dict:
+#             if degrees == 0: #if the person doesn't move
+#                 newLine += '\tNone\t' #give it no direction
+#                 break
+#             elif key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
+#                 newLine += '\t' + UDLR_dict[dir_dict[key]] + '\t' #assign it to that direction in the file
+#                 break
+#
+#         newLine += (thisLine[3] + '\n') #just time column
+#         newLine += (str(degrees) + '\t' + thisLine[3] + '\n') #degrees and time columns
+#         dir_file.write(newLine) #writes the line in the .txt file
 
-    dir_dict = {} #dictionary of directions: D1, D2, D3 ...
-    UDLR_list = ['R', 'UR', 'U', 'UL', 'L', 'DL', 'D', 'DR']
-    UDLR_dict = {} #dictionary of U, D, L, R ...
-    for x in range(numDirections):
-        dir_dict[(interval*x - 22.5, interval*(x+1) - 22.5)] = ('D' + str(x+1))
-        UDLR_dict['D' + str(x+1)] = UDLR_list[x] #maps D1 to R, D2 to UR, etc
 
-    lines = file.readlines()
-    for x in range(len(lines)-1): #for every line (except last)
-        thisLine = lines[x].split()
-        newLine = thisLine[0]
-        nextLine = lines[x+1].split() #looks at next coords to get vector direction
-        Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
-        Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
-
-        distance = math.sqrt(Ydiff**2 + Xdiff**2)/29 # ** distance to use in the future for the unity simulation (meters)
-        degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
-        if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
-            degrees += 360
-
-        for key in dir_dict:
-            if degrees == 0: #if the person doesn't move
-                newLine += '	None	' #give it no direction
-                break
-            if key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
-                newLine += '	' + UDLR_dict[dir_dict[key]] + '	' #assign it to that direction in the file
-                break
-
-        newLine += str(degrees) + '	' +(thisLine[3] + '\n') #degrees and time columns
-        dir_file.write(newLine) #writes the line in the .txt file
-
-
-separate_file(datafile) #separate the main file into files of each index
+separate_file(testfile) #separate the main file into files of each index
+f = open(datafile, 'r')
 for file in file_list: #for the file of each index
     simplify(file) #simplify it to every second
     get_directions(file.replace('.txt', '_sim.txt'), 9) #get the directions of the simplified file
