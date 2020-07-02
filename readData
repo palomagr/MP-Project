@@ -3,6 +3,7 @@ import numpy as np
 import math
 import pandas as pd
 import os
+import cv2
 
 filepath = '/Users/kmcpherson/Documents/UROP/' #filepath to the main folder - can be changed depending on the user
 testfile = filepath + 'testfile.txt' #tester file with more indices than just 0 & 1
@@ -10,6 +11,7 @@ datafile = filepath + 'dj02_3_a_good_1200x1200.txt'
 col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns for the coordinate file
 col_dir = ['Visitor Index', 'Action', 'Distance', 'Timestamp', 'Time Static'] #names of the columns for the directions file
 file_list = []
+heatmap_list = []
 
 def separate_file(filename): #separates one .txt file into .txt files for each index
     file = open(filename, 'r') #whole .txt file with indices
@@ -102,16 +104,17 @@ def get_directions(filename, numDirections): #gets list (.txt) of directions fro
             if dir_list[x-1] != 'None': #if this is the first 'None' (the previous one is not None)
                 timeDiff = time_interval #start keeping track of time
                 timePrint = 0.0
-                if dir_list[x+1] != 'None':
+                if dir_list[x+1] != 'None': #if it's the first and last None (only 1 second)
                     timePrint = timeDiff
+                    heatmap_list.append((int(float(thisLine[1])), int(float(thisLine[2]))))
                     timeDiff = 0.0
             else: #if there was a 'None' before this
                 timeDiff += time_interval #add the line's time
                 if dir_list[x+1] != 'None': #if this is the last 'None'
                     timePrint = timeDiff #record this time to print
+                    heatmap_list.append((int(float(thisLine[1])), int(float(thisLine[2]))))
                     timeDiff = 0.0 #reset the time
-
-        else:
+        else: #if it has a direction
             timePrint = 0.0
             if dir_list[x] == dir_list[x-1]: #if this direction is the same as the previous line
                 newLine += '\t' + 'F\t' #just go forward
@@ -155,9 +158,17 @@ def get_directions(filename, numDirections): #gets list (.txt) of directions fro
 #         newLine += (str(degrees) + '\t' + thisLine[3] + '\n') #degrees and time columns
 #         dir_file.write(newLine) #writes the line in the .txt file
 
+def create_heatmap():
+    img = cv2.imread(filepath + 'machu.jpg')
+    height = img.shape[0]
+    for coord in heatmap_list:
+        cv2.circle(img,(coord[0],height-coord[1]), 5, (0,0,255), -1)
+    cv2.imshow('image', img)
+    cv2.waitKey(0)
 
-separate_file(testfile) #separate the main file into files of each index
+separate_file(datafile) #separate the main file into files of each index
 for file in file_list: #for the file of each index
     simplify(file) #simplify it to every second
     get_directions(file.replace('.txt', '_sim.txt'), 9) #get the directions of the simplified file
     txt_to_csv(file.replace('.txt', '_sim_dir.txt'), 'dir') #put that into a csv
+create_heatmap() #has to be done after get_directions
