@@ -162,7 +162,7 @@ def create_heatmap():
     img = cv2.imread(filepath + 'machu.jpg')
     height = img.shape[0]
     for coord in heatmap_list:
-        cv2.circle(img,(coord[0],height-coord[1]), 5, (0,0,255), -1)
+        cv2.circle(img,(coord[0],coord[1]), 5, (0,0,255), -1)
     cv2.imshow('image', img)
     cv2.waitKey(0)
 
