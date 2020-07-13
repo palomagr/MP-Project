@@ -60,8 +60,6 @@ def create_boxes(): # helper method - select boxes
             print("q pressed")
             break
 
-    #print('Selected bounding boxes {}'.format(bboxes))
-
 
 if __name__ == '__main__':
 
@@ -78,14 +76,10 @@ if __name__ == '__main__':
     # Create a video capture object to read videos
     cap = cv2.VideoCapture(videoPath)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    timestamps = [cap.get(cv2.CAP_PROP_POS_MSEC)]
-    calc_timestamps = [0.0]
-    ts,cur_ts, prev_ts = 0,0,0
-    rrr = '0'
     time = '0'
 
     # Read first frame
-    cx, cy, cx0, cy0, user = 0,0,0,0,0
+    cx, cy, user = 0,0,0
     success, frame = cap.read()
     width, height, channels = frame.shape
 
@@ -96,8 +90,14 @@ if __name__ == '__main__':
     create_boxes()
     print('Selected bounding boxes {}'.format(bboxes))
 
+    rwid= {} #width of the rectangle drawn for each person
+    rlen = {} #length of the rect. drawn for each person
     multiTracker = cv2.MultiTracker_create() # Create MultiTracker object
+    i = 0
     for bbox in bboxes: # Initialize MultiTracker
+        rwid[i] = bbox[2]
+        rlen[i] = bbox[3]
+        i += 1
         multiTracker.add(createTrackerByName(trackerType), frame, bbox)
 
     f = open(text_string, "w") #open the file to write to
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     while cap.isOpened(): # Process video and track objectspremie
         success, frame = cap.read()
         font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(frame,time,(1070,60), font, 1,(255,255,255),2,cv2.LINE_AA) #timestamp
+        cv2.putText(frame,str("{:.{}f}".format(float(time), 3)),(1070,60),font,1,(255,255,255),2,cv2.LINE_AA) #timestamp
         if not success:
             print("Failed")
             break
@@ -114,24 +114,19 @@ if __name__ == '__main__':
         success, boxes = multiTracker.update(frame)
         users = {}
 
-        for i, newbox in enumerate(boxes):
-            p1 = (int(newbox[0]), int(newbox[1]))
-            p2 = (int(newbox[0] + newbox[2]), int(newbox[1] + newbox[3]))
-            cv2.rectangle(frame, p1, p2, colors[i], 2, 1)
-            cx = ((int(newbox[0])+ int(newbox[0] + newbox[2]))/2) * (900/width) #mid point of the selected region of interest in x
-            cy = ((int(newbox[1]) + int(newbox[1] + newbox[3])) / 2) * (900/height) #mid point of the selecteed region of interest in y
-            user = i
-            cur_ts = str((cap.get(cv2.CAP_PROP_POS_MSEC) / 1000))
-            num = cap.get(cv2.CAP_PROP_POS_MSEC)/1000
-            time = str("{:.{}f}".format(num, 3))
-            r, rr = cur_ts.split('.')
-            if r != rrr:
-             rrr = r
+        for user, newbox in enumerate(boxes):
+            x, y = int(newbox[0]), int(newbox[1]) # starting point
+            wid, len = rwid[user], rlen[user]
+            cv2.rectangle(frame, (x,y), (x+wid, y+len), colors[user], 2, 1)
+            cx = (newbox[0]) + (wid/2) * (900/width) #midpoint of the selected region in x
+            cy = (newbox[1]) + (len/2) * (900/height) #midpoint of the selecteed region in y
+            time = cap.get(cv2.CAP_PROP_POS_MSEC)/1000
 
-            if float(time)%1 < 0.042: #every second
-                f.write(str(user) + '\t' +
-                str("{:.{}f}".format(cx, 3)) + '\t' + str("{:.{}f}".format(cy, 3))
-                + '\t' + str("{:.{}f}".format(num, 1)) +  '\n') #write data
+
+            if time%1 < 0.042: #every second
+                f.write(str(user) +'\t'+ str("{:.{}f}".format(cx, 3))
+                               +'\t'+ str("{:.{}f}".format(cy, 3))
+                               +'\t'+ str(float(int(time))) +'\n') #write data
 
         # show frame / write data
         cv2.imshow('Tracking Trajectories', frame)
@@ -145,10 +140,7 @@ if __name__ == '__main__':
                 multiTracker.add(createTrackerByName(trackerType), frame, bbox)
 
         # quit on ESC button
-        if cv2.waitKey(1) & 0xFF == 27:  # Esc pressed
+        elif cv2.waitKey(1) & 0xFF == 27:  # Esc pressed
             break
 
-
-    #for i, (ts, cts) in enumerate(zip(timestamps, calc_timestamps)):
-        #print('Frame %d difference:' % i, abs(ts - cts))
     f.close()
