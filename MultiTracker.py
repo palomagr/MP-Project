@@ -128,10 +128,10 @@ if __name__ == '__main__':
             if r != rrr:
              rrr = r
 
-            # if float(time)%1 < 0.042: #every second
-            #     f.write(str(user) + '\t' +
-            #     str("{:.{}f}".format(cx, 3)) + '\t' + str("{:.{}f}".format(cy, 3))
-            #     + '\t' + str("{:.{}f}".format(num, 1)) +  '\n') #write data
+            if float(time)%1 < 0.042: #every second
+                f.write(str(user) + '\t' +
+                str("{:.{}f}".format(cx, 3)) + '\t' + str("{:.{}f}".format(cy, 3))
+                + '\t' + str("{:.{}f}".format(num, 1)) +  '\n') #write data
 
         # show frame / write data
         cv2.imshow('Tracking Trajectories', frame)
