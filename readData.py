@@ -73,13 +73,13 @@ def get_directions(filename, numDirections): #gets list (.txt) of directions fro
         nextLine = lines[x+1].split() #looks at next coords to get vector direction
         Ydiff = float(nextLine[2]) - float(thisLine[2]) #Y component
         Xdiff = float(nextLine[1]) - float(thisLine[1]) #X component
-        distance = math.sqrt(Ydiff**2 + Xdiff**2)/29 # ** distance to use in the future for the unity simulation (meters)
+        distance = math.sqrt(Ydiff**2 + Xdiff**2)/29*(4/3) #distance the person moves (4/3 b/c it's out of 900 & it should be 1200)
         degrees = round((math.atan2(Xdiff, Ydiff)/math.pi*180), 1) #direction in degrees the person is moving at that second
         if degrees < 0: #accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
             degrees += 360
 
         for key in directions_dict:
-            if degrees == 0 or distance <= 0.01: #if the person doesn't move
+            if degrees == 0 or distance <= 0.1: #if the person doesn't move
                 dir_list.append('None')
                 break
             elif key[0] < degrees <= key[1]: #if the person's direction falls within a D#'s range
@@ -160,7 +160,6 @@ def get_directions(filename, numDirections): #gets list (.txt) of directions fro
 
 def create_heatmap():
     img = cv2.imread(filepath + 'machu.jpg')
-    height = img.shape[0]
     for coord in heatmap_list:
         cv2.circle(img,(coord[0],coord[1]), 5, (0,0,255), -1)
     cv2.imshow('image', img)
@@ -168,7 +167,6 @@ def create_heatmap():
 
 separate_file(datafile) #separate the main file into files of each index
 for file in file_list: #for the file of each index
-    simplify(file) #simplify it to every second
     get_directions(file.replace('.txt', '_sim.txt'), 9) #get the directions of the simplified file
     txt_to_csv(file.replace('.txt', '_sim_dir.txt'), 'dir') #put that into a csv
 create_heatmap() #has to be done after get_directions
