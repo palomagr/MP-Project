@@ -5,4 +5,4 @@ Here's my final process:
 2. Go into Photoshop or another photo-editing app, make the image a background layer, then trace over it on another layer.
 3. Hide the background layer and export the image. In Rhino, use the Heightfield command with that image. If needed, scale the wall to the correct size using the Scale1D command.
 4. Erase the former flat wall that was there before. (If it's part of a polysurface, the Explode command will need to be used first.) 
-5. Do this for all the walls, using different image outlines based on which type of building it is. 
+5. Do this for all the walls, using different image outlines based on which type of building it is.
