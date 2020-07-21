@@ -1,4 +1,4 @@
-How to use OpenCV code:
+How to use OpenCV code: 
 1. In MultiTracker.py, change the variables videoPath, text_string, and sim_text_string to your desired filepaths.
 2. Run MultiTracker.py.
 3. Select your first object by drawing a window around it, then press enter.
