@@ -1,6 +1,6 @@
 How to use OpenCV code:
 1. In MultiTracker.py, change the variables videoPath, text_string, and sim_text_string to your desired filepaths.
-2. Run MultiTracker.py
+2. Run MultiTracker.py.
 3. Select your first object by drawing a window around them, then press enter.
 4. Press any key to select the next object, and repeat.
 5. When you've selected the last object, press enter and then 'q'. The video should run and track the objects if they move.
