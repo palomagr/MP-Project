@@ -12,6 +12,7 @@ datafile = filepath + 'Videos/Video Text Files/dj01/g01_2.txt'
 col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] #names of the columns for the coordinate file
 col_dir = ['Visitor Index', 'Action', 'Distance', 'Timestamp', 'Time Static'] #names of the columns for the directions file
 file_list = []
+
 BLUE = (3, 155, 229)
 GREEN = (30, 187, 120)
 YELLOW = (255, 255, 0)
@@ -46,7 +47,6 @@ def separate_file(filename):
         globals()[index].write(line)
 
 
-
 def txt_to_csv(filename, cols):
     """
     Converts a .txt file to .csv
@@ -59,15 +59,6 @@ def txt_to_csv(filename, cols):
 
     read_file = pd.read_csv(filename, delimiter='\t', header=None, names=columns) #take in the .txt file
     read_file.to_csv(filename.replace('txt', 'csv'), index=None) #convert to .csv
-
-
-def separate_and_convert(filename):
-    """
-    Takes in the big .txt file, converts it into .csv files for each index
-    """
-    separate_file(filename)
-    for file in file_list:
-        txt_to_csv(file, 'coord')
 
 
 def simplify(filename):
@@ -175,7 +166,7 @@ def get_directions(filename, numDirections):
             timePrint = 0.0
 
             if heatmap_dict[this_point] == -1:
-                heatmap_dict[this_point] = 0
+                heatmap_dict[this_point] = 0.0
             else:
                 heatmap_dict[this_point] += time_interval
 
@@ -196,16 +187,14 @@ def get_directions(filename, numDirections):
     dir_file.close()
 
 
-def create_heatmap():
+def create_heatmap(image_filename):
     """
     Makes a cumulative heatmap from all the files that have been made so far.
     """
-    assign_colors(heat_color)
-    draw_heatmap(heat_color)
+    assign_colors()
+    draw_heatmap(image_filename)
 
-# HELPER FUNCTIONS
-
-def assign_colors(heat_color):
+def assign_colors():
     """
     Helper function: given a dictionary to fill,
     assigns coordinates to one of 5 color groups
@@ -215,48 +204,47 @@ def assign_colors(heat_color):
             heat_value = heatmap_dict[(x,y)] # do it on result instead of image
             if heat_value == -1: # no one's ever walked there - make it blue
                 heat_color[BLUE].append((x,y))
-            elif 0 <= heat_value <= 0.05:
+            elif 0 <= heat_value <= 0.1:
                 heat_color[GREEN].append((x,y))
-            elif 0.05 < heat_value <= 1:
+            elif 0.1 < heat_value <= 1:
                 heat_color[YELLOW].append((x,y))
             elif 1 < heat_value <= 4:
                 heat_color[ORANGE].append((x,y))
             else: # > 4
                 heat_color[RED].append((x,y))
 
-
-def draw_heatmap(heat_color):
+def draw_heatmap(image_filename):
     """
     Helper function. Given a dictionary of color values,
     creates an image with the heatmap and returns it.
     """
-    image = load_image('/Users/kmcpherson/Documents/UROP/machu.jpg')
+    image = load_image('/Users/kmcpherson/Documents/UROP/machu_bw.png') # background image
     result = {'height': image['height'],
               'width': image['width'],
               'pixels': image['pixels'].copy()}
 
-    for coord in heat_color[BLUE]:
-        x, y = coord[0], coord[1]
-        set_pixel(result, x, y, BLUE)
+    # optional - to get rid of the image underneath
+    # for coord in heat_color[BLUE]:
+    #     x, y = coord[0], coord[1]
+    #     set_pixel(result, x, y, BLUE)
 
     for coord in heat_color[GREEN]:
         x, y = coord[0], coord[1]
-        draw_circle(result, x, y, 12, GREEN)
+        draw_circle(result, x, y, 10, GREEN)
 
     for coord in heat_color[YELLOW]:
         x, y = coord[0], coord[1]
-        draw_circle(result, x, y, 12, YELLOW)
+        draw_circle(result, x, y, 10, YELLOW)
 
     for coord in heat_color[ORANGE]:
         x, y = coord[0], coord[1]
-        draw_circle(result, x, y, 12, ORANGE)
+        draw_circle(result, x, y, 10, ORANGE)
 
     for coord in heat_color[RED]:
         x, y = coord[0], coord[1]
-        draw_circle(result, x, y, 12, RED)
+        draw_circle(result, x, y, 10, RED)
 
-    save_image(result, '/Users/kmcpherson/Documents/UROP/heatmap.png')
-
+    save_image(result, '/Users/kmcpherson/Documents/UROP/' + image_filename)
 
 def draw_circle(image, x, y, radius, color):
     """
@@ -275,6 +263,93 @@ def draw_circle(image, x, y, radius, color):
         set_pixel(image, x+x1, y+y1, color)
 
 
+def load_fw_videos():
+    folder = '/Users/kmcpherson/Documents/UROP/Videos/Video Text Files/'
+    for video in ['dj01/dj01_', 'dj02/dj02_', 'dj08/dj08_']:
+        for i in range(1,100):
+            # the '_sim' can be taken out to do the whole file
+            # using simplified files can help with runtime for debugging
+            name = folder + video + str(i) + '_sim.txt'
+            try:
+                separate_file(name)
+            except:
+                break
+
+def load_group_videos():
+    folder = '/Users/kmcpherson/Documents/UROP/Videos/Video Text Files/'
+    for video in ['dj01/g01_', 'dj02/g02_', 'dj08/g08_']:
+        for i in range(1,100):
+            # the '_sim' can be taken out to do the whole file
+            # using simplified files can help with runtime for debugging
+            name = folder + video + str(i) + '_sim.txt'
+            try:
+                separate_file(name)
+            except:
+                break
+
+
+def make_places_data(heatmap_file):
+    """
+    This function keeps track of all the places the visitors are going to the
+    most. I chose the places below, but you can add/remove some if needed.
+    I found that in the videos, the people only went in a few buildings, so I
+    left out the rest and assumed any coordinates in those areas are from people
+    walking on nearby paths.
+    """
+    places_dict = {'2M Temple': 0.0, 'Paths': 0.0,
+                   'UL Terrace': 0.0, 'LR Terrace': 0.0,
+                   'Building 1': 0.0, 'Building 9': 0.0}
+
+    for coord in heatmap_dict:
+        if heatmap_dict[coord] != -1: # only want to look at points w/ values
+
+            # upper left terrace
+            if coord[0] in range(0,250) and coord[1] in range(0,200):
+                places_dict['UL Terrace'] += heatmap_dict[coord]
+
+            # building 9
+            elif coord[0] in range(250,500) and coord[1] in range(0,200):
+                places_dict['Building 9'] += heatmap_dict[coord]
+
+            # 2 mirrors temple
+            elif coord[0] in range(500,900) and coord[1] in range(0,375):
+                places_dict['2M Temple'] += heatmap_dict[coord]
+
+            # lower right terrace
+            elif coord[0] in range(600,900) and coord[1] in range(580,900):
+                places_dict['LR Terrace'] += heatmap_dict[coord]
+
+            # building 1
+            elif coord[0] in range(300,500) and coord[1] in range(370,600):
+                places_dict['Building 1'] += heatmap_dict[coord]
+
+            # all other areas are likely from paths
+            else:
+                places_dict['Paths'] += heatmap_dict[coord]
+
+    for place in places_dict:
+        line = '\n' + place +':\t'
+        if len(place) < 7:
+            line += '\t'
+        line += str("{:.{}f}".format(places_dict[place], 1)) + ' total seconds\n'
+        heatmap_file.write(line)
+
+
+def make_full_data(heatmap_file):
+    # optional - lets the user know this is the full data
+    heatmap_file.write('______________________________________\n\nFULL DATA:\n\n')
+    heatmap_file.write('Coordinate\tTime\n\n')
+    for coord in heatmap_dict:
+        if heatmap_dict[coord] != -1: # only want to look at points w/ values
+            line = str(coord) + '\t'
+            if len(str(coord)) < 7:
+                line += '\t'
+            line += str("{:.{}f}".format(heatmap_dict[coord], 1)) + 's\n'
+            heatmap_file.write(line)
+
+
+
+# HELPER FUNCTIONS FOR IMAGES
 
 def load_image(filename):
     """
@@ -330,32 +405,36 @@ def set_pixel(image, x, y, c):
 
 
 if __name__ == '__main__':
-    folder = '/Users/kmcpherson/Documents/UROP/Videos/Video Text Files/'
 
     # add the free walker files
-    for video in ['dj01/dj01_', 'dj02/dj02_', 'dj08/dj08_']:
-        for i in range(1,100):
-            name = folder + video + str(i) + '_sim.txt'
-            if os.path.exists(name):
-                separate_file(name)
-            else:
-                break
+    load_fw_videos()
 
     # add the group files
-    for video in ['dj01/g01_', 'dj02/g02_', 'dj08/g08_']:
-        for i in range(1,100):
-            name = folder + video + str(i) + '_sim.txt'
-            if os.path.exists(name):
-                separate_file(name)
-            else:
-                break
+    load_group_videos()
 
-    for file in file_list: # for every file we've looked throug
-        get_directions(file, 9) #get the directions of the file
-        # txt_to_csv(file.replace('.txt', '_dir.txt'), 'dir') #put that into a csv
-    create_heatmap() #has to be done after get_directions
+    for file in file_list: # for every file we've looked through
+        get_directions(file, 9) #get the directions of the file (9 directions)
+        # txt_to_csv(file.replace('.txt', '_dir.txt'), 'dir') #put those into csv's
+
+    # save the heatmap data to see which places are the most popular
+    heatmap_file = open(filepath + 'heatmap_data', 'w')
+    make_places_data(heatmap_file)
+
+    # optional - include the full data under the info on the places
+    make_full_data(heatmap_file)
+
+    # close the file, either after make_places_data (if you just ran that) or after both
+    heatmap_file.close()
+
+    # draw the heatmap and save the file
+    #create_heatmap('total_heatmap.png') # ! has to be done after get_directions !
+
+    # a ton of files are made in the process - delete them at the end
     for file in file_list:
         os.remove(file)
+
+
+
 
 
 
