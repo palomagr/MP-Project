@@ -66,16 +66,16 @@ def create_boxes(): #/// helper method - select boxes
 
 if __name__ == '__main__':
 
-    print("Default tracking algoritm is CSRT\nAvailable tracking algorithms are:\n")
-    for t in trackerTypes:
-      print(t)
+    #print("Default tracking algoritm is CSRT\nAvailable tracking algorithms are:\n")
+    #for t in trackerTypes:
+      #print(t)
 
     trackerType = "CSRT"
 
     # Set video to load
-    videoPath = '/Users/kmcpherson/Documents/UROP/Videos/dj08/dj08_2.mp4'
-    text_string = 'dj08_2.txt' # full file - records every frame
-    sim_text_string = 'dj08_2_sim.txt' #/// simplified file - records every second
+    videoPath = '/Users/kmcpherson/Documents/UROP/Videos/dj01/g01_1.mp4'
+    text_string = 'g01_1.txt' # full file - records every frame
+    sim_text_string = 'g01_1_sim.txt' #/// simplified file - records every second
 
     # Create a video capture object to read videos
     cap = cv2.VideoCapture(videoPath)
