@@ -1,5 +1,5 @@
 
-""" NOTICE: the filepaths will need to be changed since this was for my computer """
+""" *** NOTICE: the filepaths will need to be changed since this was for my computer *** """
 
 import numpy as np
 import math
@@ -35,7 +35,7 @@ heat_color = {BLUE: [],
 
 def separate_file(filename):
     """
-    Separates one .txt file into individual .txt files for each index
+    Separates one .txt file with multiple indices into individual .txt files for each index
     """
     file = open(filename, 'r') # whole .txt file with indices
     lines = file.readlines()
@@ -65,7 +65,7 @@ def txt_to_csv(filename, cols):
 
 def simplify(filename):
     """
-    Takes in a .txt, simplifies to a .txt with fewer points (every second)
+    Takes in a .txt with all points, simplifies to a .txt with fewer points (every second)
     *** SHOULD BE DONE AFTER SEPARATE ***
     """
     f = open(filename, 'r')
@@ -85,6 +85,7 @@ def simplify(filename):
 def get_directions(filename, numDirections):
     """
     Gets list (.txt) of directions from .txt file
+    *** should be done after separate, since we want the directions for each index ***
     """
     file = open(filename, 'r') # .txt file
     dir_file = open(filename.replace('.txt', '_dir.txt'), 'w') # file with directions
@@ -176,12 +177,14 @@ def get_directions(filename, numDirections):
                 newLine += '\t' + dir_list[x] + ', F\t' # turn and go forward
 
         if timePrint == 0:
+            # just distance and time (no time static)
             newLine += str(round(distance,3)) + '\t' +(thisLine[3] + '\t' + '' + '\n')
         else:
-            newLine += str(round(distance,3)) + '\t' +(thisLine[3] + '\t' + str("{:.{}f}".format(timePrint, 2)) + '\n') # distance, time, time static columns
+            # distance, time, time static columns
+            newLine += str(round(distance,3)) + '\t' +(thisLine[3] + '\t' + str("{:.{}f}".format(timePrint, 2)) + '\n')
 
         dir_file.write(newLine) # writes the line in the .txt file
-        
+
     old_filename = filename.replace('.txt', '_dir.txt')
     new_filename = filepath + 'Videos/Video Text Files/Directions/' + os.path.basename(old_filename)
     os.rename(old_filename, new_filename)
@@ -192,8 +195,9 @@ def create_heatmap(image_filename):
     """
     Makes a cumulative heatmap from all the files that have been made so far.
     """
-    assign_colors()
-    draw_heatmap(image_filename)
+    # helper functions below:
+    assign_colors() # assign each coordinate to a color
+    draw_heatmap(image_filename) # draw the heatmap
 
 def assign_colors():
     """
@@ -349,9 +353,7 @@ def make_full_data(heatmap_file):
             heatmap_file.write(line)
 
 
-
 # HELPER FUNCTIONS FOR IMAGES
-
 def load_image(filename):
     """
     Loads a color image from the given file and returns a dictionary
