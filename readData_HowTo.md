@@ -28,8 +28,8 @@ The rest of the functions are helper methods with thorough comments - things lik
   
 ! IMPORTANT !  
 Filenames will need to be changed, since the ones in the code are from my (Kimmy's) computer. I figured it would be better to leave them in than to make generic folder names that may be misleading.  
-If you want a minimum amount of work fixing these filenames, here's my setup: (I've also uploaded this all to the Dropbox)   
   
+If you want a minimum amount of work fixing these filenames, here's my setup: (this is also in the Dropbox under 'Kimmy's Folder')   
 The UROP folder is at Users/ *kmcpherson* /Documents/UROP  
 In that folder, I have various images of Machu Picchu for confirming paths, as well as a test file for the code (testfile.txt) if needed.   
 Also in that folder, I have a folder named "Videos." In there, I have three folders: dj01, dj02, and dj08, as well as "Video Text Files".  
