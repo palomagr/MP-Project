@@ -8,6 +8,7 @@ import os
 import cv2
 from PIL import Image
 
+# instance variables - make sure to change the filepaths!
 filepath = '/Users/kmcpherson/Documents/UROP/' # filepath to the main folder - can be changed depending on the user
 testfile = filepath + 'testfile.txt' # tester file with more indices than just 0 & 1
 datafile = filepath + 'Videos/Video Text Files/dj01/g01_2.txt'
@@ -15,12 +16,14 @@ col_coord = ['Visitor Index', 'X coordinate', 'Y coordinate', 'Time'] # names of
 col_dir = ['Visitor Index', 'Action', 'Distance', 'Timestamp', 'Time Static'] # names of the columns for the directions file
 file_list = []
 
+# colors for the heatmap
 BLUE = (3, 155, 229)
 GREEN = (30, 187, 120)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 165, 0)
 RED = (255, 0, 0)
 
+# setting up the heatmap dictionaries
 heatmap_dict = {}
 for x in range(900):
     for y in range(900):
@@ -47,20 +50,6 @@ def separate_file(filename):
             index_dict[index] = filename.replace('.txt', '__'+index+'.txt') # make a key in the dict for it
             globals()[index] = open(index_dict[index], 'w') # opens each of the files and assigns them to a variable (0file = __, 1file = __)
         globals()[index].write(line)
-
-
-def txt_to_csv(filename, cols):
-    """
-    Converts a .txt file to .csv
-    """
-    f = open(filename, 'r') # open the file
-    if 'dir' in cols: # create the columns
-        columns = col_dir
-    else:
-        columns = col_coord
-
-    read_file = pd.read_csv(filename, delimiter='\t', header=None, names=columns) # take in the .txt file
-    read_file.to_csv(filename.replace('txt', 'csv'), index=None) # convert to .csv
 
 
 def simplify(filename):
@@ -110,7 +99,7 @@ def get_directions(filename, numDirections):
         if degrees < 0: # accounts for negative degrees - makes the range 0 to 360 instead of -180 to 180
             degrees += 360
         for key in directions_dict:
-            if degrees == 0 or distance < .25: # if the person doesn't move
+            if degrees == 0 or distance < 0.5: # if the person doesn't move
                 dir_list.append('None')
                 break
             elif key[0] < degrees <= key[1]: # if the person's direction falls within a D#'s range
@@ -351,6 +340,22 @@ def make_full_data(heatmap_file):
                 line += '\t'
             line += str("{:.{}f}".format(heatmap_dict[coord], 1)) + 's\n'
             heatmap_file.write(line)
+
+
+def txt_to_csv(filename, cols):
+    """
+    Converts a .txt file to .csv
+    cols = whether you want direction columns, or coordinate columns.
+    """
+    f = open(filename, 'r') # open the file
+    if 'dir' in cols: # create the columns
+        columns = col_dir
+    else:
+        columns = col_coord
+
+    read_file = pd.read_csv(filename, delimiter='\t', header=None, names=columns) # take in the .txt file
+    read_file.to_csv(filename.replace('txt', 'csv'), index=None) # convert to .csv
+
 
 
 # HELPER FUNCTIONS FOR IMAGES
